@@ -1,76 +1,70 @@
 provider "aws" {
-  region = var.default_region
+
+  region     = "ap-south-1"
 }
 
-variable "default_region" {
-  default = "ap-south-1"
-  description = "The default region"
+resource "aws_key_pair" "terraform_ec2_key" {
+  key_name   = "terraform_ec2_key"
+  public_key = "${file("terraform_ec2_key.pub")}"
 }
 
-variable "instance_name"{
+resource "aws_instance" "ourfirst" {
+  ami           = "ami-00bb6a80f01f03502"
+  instance_type = "t2.micro"
+  key_name = "terraform_ec2_key"
+  security_groups = ["${aws_security_group.example.name}"]
 
-  default = "Server"
-  description = "This is the name of the server"
-}
+  tags = {
+    Name = "India-server"
+  }
+    user_data = <<-EOF
+#!/bin/bash
+sudo apt update -y 
+sudo apt install apache2 -y 
+sudo apt install zip -y
+sudo systemctl start apache2
+sudo systemctl enable apache2 
+cd /var/www/html/
+sudo rm index.html
+sudo wget https://www.free-css.com/assets/files/free-css-templates/download/page296/oxer.zip
+sudo unzip oxer.zip
+cd oxer-html
+sudo cp -r * /var/www/html/
+EOF
 
-variable "instance_type" {
-  default = "t2.micro"
-  description = "This is the type of the instance"
-}
-
-locals {
-  common_tags = {
-    "name" = "Kedhar-instance"
-    "team" = "Dev-ops"
-    "role" = "Devops-Engineer"
-    "creation_date" = "date-${formatdate("DDMMYYYY", timestamp())}"
-    #"Name" = element(["Devops", "developer", "Dev-sec-ops"], 1)
-    "Name" = "${var.instance_name}-ec2-${var.instance_type}-${substr(timestamp(), 0, 10)}"
-
-}
-}
-
-resource "aws_instance" "Locale_testing" {
-
-  instance_type = var.instance_type
-  tags = local.common_tags
-  
-  
-  ami = data.aws_ami.pull_ami.id
-
-  
-}
-
-data "aws_ami" "pull_ami" {
-  most_recent = true
-  owners = ["amazon"]
-
-  filter {
-    name = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
   }
 
-   filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
 
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
+resource "aws_security_group" "example" {
+  name   = "security-group"
+ ingress {
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
   
+  }
+   ingress {
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  
+  }
+
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    
+  }
 }
 
-output "ami" {
-  value = data.aws_ami.pull_ami.id
-}
 
-data "aws_vpc" "pull_vpc" {
 
-  default = true
-}
-
-output "VPC" {
-  value = data.aws_vpc.pull_vpc.id
-}
+//resource "aws_instance" "ourfirst" {
+ // ami           = "ami-0447a12f28fddb066"
+  //instance_type = "t2.micro"
+//}
